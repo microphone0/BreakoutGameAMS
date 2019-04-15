@@ -37,6 +37,9 @@ let BottomCategory : UInt32 = 0x1 << 1
 let BlockCategory  : UInt32 = 0x1 << 2
 let PaddleCategory : UInt32 = 0x1 << 3
 let BorderCategory : UInt32 = 0x1 << 4
+var rows = 1
+var score: SKLabelNode!
+var BlocksDestroyed = 0
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
 
@@ -52,6 +55,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             run(gameWon ? gameWonSound : gameOverSound)
             let gameOver = childNode(withName: GameMessageName) as! SKSpriteNode
             let textureName = gameWon ? "YouWon" : "GameOver"
+            if gameWon {
+                rows += 1
+            } else {
+                rows = 1
+                BlocksDestroyed = 0
+            }
             let texture = SKTexture(imageNamed: textureName)
             let actionSequence = SKAction.sequence([SKAction.setTexture(texture),
                                                     SKAction.scale(to: 1.0, duration: 0.25)])
@@ -62,13 +71,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     let blipSound = SKAction.playSoundFileNamed("pongblip", waitForCompletion: false)
     let blipPaddleSound = SKAction.playSoundFileNamed("paddleBlip", waitForCompletion: false)
-    let bambooBreakSound = SKAction.playSoundFileNamed("BambooBreak", waitForCompletion: false)
-    let gameWonSound = SKAction.playSoundFileNamed("game-won", waitForCompletion: false)
-    let gameOverSound = SKAction.playSoundFileNamed("game-over", waitForCompletion: false)
+    let bambooBreakSound = SKAction.playSoundFileNamed("iceBreak", waitForCompletion: false)
+    let gameWonSound = SKAction.playSoundFileNamed("burning1", waitForCompletion: false)
+    let gameOverSound = SKAction.playSoundFileNamed("iceCracking", waitForCompletion: false)
     
     override func didMove(to view: SKView) {
         super.didMove(to: view)
-    
+        
         // 1
         let borderBody = SKPhysicsBody(edgeLoopFrom: self.frame)
         // 2
@@ -103,23 +112,29 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // 2
         let xOffset = (frame.width - totalBlocksWidth) / 2
         // 3
-        for i in 0..<numberOfBlocks {
-            let block = SKSpriteNode(imageNamed: "iceblock.png")
-            block.position = CGPoint(x: xOffset + CGFloat(CGFloat(i) + 0.5) * blockWidth,
-                                     y: frame.height * 0.8)
-            
-            block.physicsBody = SKPhysicsBody(rectangleOf: block.frame.size)
-            block.physicsBody!.allowsRotation = false
-            block.physicsBody!.friction = 0.0
-            block.physicsBody!.affectedByGravity = false
-            block.physicsBody!.isDynamic = false
-            block.name = BlockCategoryName
-            block.physicsBody!.categoryBitMask = BlockCategory
-            block.zPosition = 2
-            addChild(block)
+        var heightThing = 0.95
+        
+        for _ in 0..<rows {
+            for i in 0..<numberOfBlocks {
+                let block = SKSpriteNode(imageNamed: "iceblock.png")
+                block.position = CGPoint(x: xOffset + CGFloat(CGFloat(i) + 0.5) * blockWidth,
+                                         y: frame.height * CGFloat(heightThing))
+                
+                block.physicsBody = SKPhysicsBody(rectangleOf: block.frame.size)
+                block.physicsBody!.allowsRotation = false
+                block.physicsBody!.friction = 0.0
+                block.physicsBody!.affectedByGravity = false
+                block.physicsBody!.isDynamic = false
+                block.name = BlockCategoryName
+                block.physicsBody!.categoryBitMask = BlockCategory
+                block.zPosition = 2
+                addChild(block)
+            }
+            heightThing -= 0.05
         }
         
         ball.physicsBody!.contactTestBitMask = BottomCategory | BlockCategory
+        
         
         let gameMessage = SKSpriteNode(imageNamed: "TapToPlay")
         gameMessage.name = GameMessageName
@@ -141,6 +156,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         trail.targetNode = trailNode
         // 4
         ball.addChild(trail)
+        
+        score = SKLabelNode(fontNamed: "Chalkduster")
+        score.text = "Score: \(BlocksDestroyed)"
+        score.fontColor = UIColor.black
+        score.fontSize = 20
+        score.position = CGPoint(x: size.width * 0.1, y: size.height * 0.1)
+        addChild(score)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -233,6 +255,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func breakBlock(node: SKNode) {
         run(bambooBreakSound)
+        BlocksDestroyed += 5
+        score.text = "Score: \(BlocksDestroyed)"
         let particles = SKEmitterNode(fileNamed: "BrokenPlatform")!
         particles.position = node.position
         particles.zPosition = 3
